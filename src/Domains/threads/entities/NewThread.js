@@ -1,5 +1,5 @@
 class NewThread {
-    constructor({ title, body, owner }) {
+    constructor({ title, body }) {
         this._verifyTitle(title);
         this._verifyBody(body);
 

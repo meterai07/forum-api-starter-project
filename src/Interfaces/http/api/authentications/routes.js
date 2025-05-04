@@ -1,5 +1,3 @@
-const { options } = require("@hapi/hapi/lib/cors");
-
 const routes = (handler) => ([
   {
     method: 'POST',
@@ -14,7 +12,7 @@ const routes = (handler) => ([
     path: '/authentications',
     handler: handler.putAuthenticationHandler,
     options: {
-
+      auth: false,
     }
   },
   {
@@ -22,7 +20,7 @@ const routes = (handler) => ([
     path: '/authentications',
     handler: handler.deleteAuthenticationHandler,
     options: {
-
+      auth: false,
     }
   },
 ]);
