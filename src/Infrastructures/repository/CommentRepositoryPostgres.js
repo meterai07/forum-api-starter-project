@@ -88,6 +88,48 @@ class CommentRepositoryPostgres extends CommentRepository {
 
         return result.rows[0];
     }
+
+    async getReplyCommentById(id) {
+        const query = {
+            text: 'SELECT id, content, date, owner FROM replies WHERE id = $1',
+            values: [id],
+        };
+
+        const result = await this._pool.query(query);
+        if (!result.rows.length) {
+            throw new NotFoundError('Balasan tidak ditemukan');
+        }
+        return result.rows[0];
+    }
+
+    async verifyReplyCommentOwner(id, credentials) {
+        const query = {
+            text: 'SELECT owner FROM replies WHERE id = $1',
+            values: [id],
+        };
+
+        const result = await this._pool.query(query);
+        if (!result.rows.length) {
+            throw new NotFoundError('Balasan tidak ditemukan');
+        }
+
+        const { owner } = result.rows[0];
+        if (owner !== credentials) {
+            throw new AuthorizationError('Anda tidak berhak menghapus balasan ini');
+        }
+    }
+
+    async deleteReplyCommentById(id) {
+        const query = {
+            text: 'UPDATE replies SET is_deleted = true WHERE id = $1 RETURNING id',
+            values: [id],
+        };
+
+        const result = await this._pool.query(query);
+        if (!result.rows.length) {
+            throw new NotFoundError('Balasan gagal dihapus. Id tidak ditemukan');
+        }
+    }
 }
 
 module.exports = CommentRepositoryPostgres;
