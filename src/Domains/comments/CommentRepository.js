@@ -11,7 +11,7 @@ class CommentRepository {
         throw new Error('COMMENT_REPOSITORY.METHOD_NOT_IMPLEMENTED');
     }
 
-    async addReplyComment(comment, credentials) {
+    async addReplyComment(reply, credentials) {
         throw new Error('COMMENT_REPOSITORY.METHOD_NOT_IMPLEMENTED');
     }
 }

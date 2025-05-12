@@ -67,20 +67,25 @@ class CommentRepositoryPostgres extends CommentRepository {
         return result.rows[0];
     }
 
-    async addReplyComment(comment, credentials) {
-        const { content, threadId, commentId } = comment;
+    async addReplyComment(reply, credentials) {
+        const { content, commentId } = reply;
         const owner = credentials;
-        const id = `comment-${this._idGenerator()}`;
+        const id = `reply-${this._idGenerator()}`;
         const date = new Date().toISOString();
-        const query = {
-            text: 'INSERT INTO comments (id, content, date, thread_id, owner, parent_id) VALUES($1, $2, $3, $4, $5, $6) RETURNING id, content, owner',
-            values: [id, content, date, threadId, owner, commentId],
-        };
 
+        const query = {
+            text: `
+            INSERT INTO replies (id, content, date, is_deleted, comment_id, owner)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING id, content, owner
+        `,
+            values: [id, content, date, false, commentId, owner],
+        };
         const result = await this._pool.query(query);
         if (!result.rows.length) {
-            throw new InvariantError('Comment gagal ditambahkan');
+            throw new InvariantError('Balasan gagal ditambahkan');
         }
+
         return result.rows[0];
     }
 }
