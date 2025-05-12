@@ -53,6 +53,36 @@ class CommentRepositoryPostgres extends CommentRepository {
             throw new NotFoundError('Comment gagal dihapus. Id tidak ditemukan');
         }
     }
+
+    async getCommentById(id) {
+        const query = {
+            text: 'SELECT id, content, date, owner FROM comments WHERE id = $1',
+            values: [id],
+        };
+
+        const result = await this._pool.query(query);
+        if (!result.rows.length) {
+            throw new NotFoundError('Comment tidak ditemukan');
+        }
+        return result.rows[0];
+    }
+
+    async addReplyComment(comment, credentials) {
+        const { content, threadId, commentId } = comment;
+        const owner = credentials;
+        const id = `comment-${this._idGenerator()}`;
+        const date = new Date().toISOString();
+        const query = {
+            text: 'INSERT INTO comments (id, content, date, thread_id, owner, parent_id) VALUES($1, $2, $3, $4, $5, $6) RETURNING id, content, owner',
+            values: [id, content, date, threadId, owner, commentId],
+        };
+
+        const result = await this._pool.query(query);
+        if (!result.rows.length) {
+            throw new InvariantError('Comment gagal ditambahkan');
+        }
+        return result.rows[0];
+    }
 }
 
 module.exports = CommentRepositoryPostgres;

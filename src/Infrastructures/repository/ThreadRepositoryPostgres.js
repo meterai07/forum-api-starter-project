@@ -67,7 +67,6 @@ class ThreadRepositoryPostgres extends ThreadRepository {
 
         const thread = result.rows[0];
 
-        // Format the response to match the required structure
         return {
             id: thread.thread_id,
             title: thread.title,
