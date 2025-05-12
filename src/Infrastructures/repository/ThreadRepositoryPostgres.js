@@ -1,4 +1,5 @@
 const InvariantError = require("../../Commons/exceptions/InvariantError");
+const NotFoundError = require("../../Commons/exceptions/NotFoundError");
 const ThreadRepository = require("../../Domains/threads/ThreadRepository");
 
 class ThreadRepositoryPostgres extends ThreadRepository {
@@ -36,7 +37,7 @@ class ThreadRepositoryPostgres extends ThreadRepository {
 
         const result = await this._pool.query(query);
         if (!result.rows.length) {
-            throw new InvariantError('Thread tidak ditemukan');
+            throw new NotFoundError('Thread tidak ditemukan');
         }
 
         return result.rows[0];
