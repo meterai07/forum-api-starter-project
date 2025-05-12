@@ -1,6 +1,7 @@
 const InvariantError = require('../../Commons/exceptions/InvariantError');
 const NotFoundError = require('../../Commons/exceptions/NotFoundError');
 const CommentRepository = require('../../Domains/comments/CommentRepository');
+const AuthorizationError = require('../../Commons/exceptions/AuthorizationError');
 
 class CommentRepositoryPostgres extends CommentRepository {
     constructor(pool, idGenerator) {
@@ -26,14 +27,29 @@ class CommentRepositoryPostgres extends CommentRepository {
         return result.rows[0];
     }
 
-    async deleteCommentById(id) {
-        const query = {
+    async deleteCommentById(id, credentials) {
+        const verifyQuery = {
+            text: 'SELECT owner FROM comments WHERE id = $1',
+            values: [id],
+        };
+
+        const verifyResult = await this._pool.query(verifyQuery);
+        if (!verifyResult.rows.length) {
+            throw new NotFoundError('Comment gagal dihapus. Id tidak ditemukan');
+        }
+
+        const { owner } = verifyResult.rows[0];
+        if (owner !== credentials) {
+            throw new AuthorizationError('Anda tidak berhak menghapus komentar ini');
+        }
+
+        const deleteQuery = {
             text: 'UPDATE comments SET is_deleted = true WHERE id = $1 RETURNING id',
             values: [id],
         };
 
-        const result = await this._pool.query(query);
-        if (!result.rows.length) {
+        const deleteResult = await this._pool.query(deleteQuery);
+        if (!deleteResult.rows.length) {
             throw new NotFoundError('Comment gagal dihapus. Id tidak ditemukan');
         }
     }
