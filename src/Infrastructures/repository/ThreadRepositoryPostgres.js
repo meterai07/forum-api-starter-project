@@ -63,6 +63,7 @@ class ThreadRepositoryPostgres extends ThreadRepository {
             WHERE replies.comment_id IN (
                 SELECT id FROM comments WHERE thread_id = $1
             )
+            ORDER BY replies.date ASC
             `,
             values: [id],
         };
