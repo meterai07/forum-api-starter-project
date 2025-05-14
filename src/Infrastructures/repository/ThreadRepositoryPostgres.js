@@ -116,7 +116,6 @@ class ThreadRepositoryPostgres extends ThreadRepository {
 
         return thread;
     }
-
 }
 
 module.exports = ThreadRepositoryPostgres;
