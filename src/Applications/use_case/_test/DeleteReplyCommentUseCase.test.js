@@ -8,6 +8,9 @@ describe('DeleteReplyCommentUseCase', () => {
 
         const mockCommentRepository = {
             getCommentById: jest.fn().mockResolvedValue(),
+        };
+
+        const mockReplyRepository = {
             getReplyCommentById: jest.fn().mockResolvedValue(),
             verifyReplyCommentOwner: jest.fn().mockResolvedValue(),
             deleteReplyCommentById: jest.fn().mockResolvedValue(),
@@ -16,6 +19,7 @@ describe('DeleteReplyCommentUseCase', () => {
         const useCase = new DeleteReplyCommentUseCase({
             commentRepository: mockCommentRepository,
             threadRepository: mockThreadRepository,
+            replyRepository: mockReplyRepository,
         });
 
         const useCasePayload = {
@@ -24,9 +28,7 @@ describe('DeleteReplyCommentUseCase', () => {
             replyId: 'reply-001',
         };
 
-        const credentials = {
-            userId: 'user-123',
-        };
+        const credentials = 'user-123';
 
         await useCase.execute(useCasePayload, credentials);
 
@@ -36,13 +38,13 @@ describe('DeleteReplyCommentUseCase', () => {
         expect(mockCommentRepository.getCommentById)
             .toHaveBeenCalledWith('comment-001');
 
-        expect(mockCommentRepository.getReplyCommentById)
+        expect(mockReplyRepository.getReplyCommentById)
             .toHaveBeenCalledWith('reply-001');
 
-        expect(mockCommentRepository.verifyReplyCommentOwner)
-            .toHaveBeenCalledWith('reply-001', credentials);
+        expect(mockReplyRepository.verifyReplyCommentOwner)
+            .toHaveBeenCalledWith('reply-001', 'user-123');
 
-        expect(mockCommentRepository.deleteReplyCommentById)
+        expect(mockReplyRepository.deleteReplyCommentById)
             .toHaveBeenCalledWith('reply-001');
     });
 });

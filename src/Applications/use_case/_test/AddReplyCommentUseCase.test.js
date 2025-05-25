@@ -6,8 +6,12 @@ describe('AddReplyCommentUseCase', () => {
         const mockThreadRepository = {
             verifyThreadAvailability: jest.fn().mockResolvedValue(),
         };
+
         const mockCommentRepository = {
             getCommentById: jest.fn().mockResolvedValue(),
+        };
+
+        const mockReplyRepository = {
             addReplyComment: jest.fn().mockResolvedValue({
                 id: 'reply-001',
                 content: 'This is a reply',
@@ -18,6 +22,7 @@ describe('AddReplyCommentUseCase', () => {
         const useCase = new AddReplyCommentUseCase({
             commentRepository: mockCommentRepository,
             threadRepository: mockThreadRepository,
+            replyRepository: mockReplyRepository,
         });
 
         const useCasePayload = {
@@ -26,20 +31,18 @@ describe('AddReplyCommentUseCase', () => {
             content: 'This is a reply',
         };
 
-        const credentials = {
-            userId: 'user-123',
-        };
+        const credentials = 'user-123';
 
         const result = await useCase.execute(useCasePayload, credentials);
 
         expect(mockThreadRepository.verifyThreadAvailability)
-            .toHaveBeenCalledWith(useCasePayload.threadId);
+            .toHaveBeenCalledWith('thread-001');
 
         expect(mockCommentRepository.getCommentById)
-            .toHaveBeenCalledWith(useCasePayload.commentId);
+            .toHaveBeenCalledWith('comment-001');
 
-        expect(mockCommentRepository.addReplyComment)
-            .toHaveBeenCalledWith(expect.any(NewReplyComment), credentials);
+        expect(mockReplyRepository.addReplyComment)
+            .toHaveBeenCalledWith(expect.any(NewReplyComment), 'user-123');
 
         expect(result).toEqual({
             id: 'reply-001',

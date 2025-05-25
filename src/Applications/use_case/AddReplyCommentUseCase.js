@@ -1,9 +1,10 @@
 const NewReplyComment = require('../../Domains/comments/entities/NewReplyComment');
 
 class AddReplyCommentUseCase {
-    constructor({ commentRepository, threadRepository }) {
+    constructor({ commentRepository, threadRepository, replyRepository }) {
         this._commentRepository = commentRepository;
         this._threadRepository = threadRepository;
+        this._replyRepository = replyRepository;
     }
 
     async execute(useCasePayload, credentials) {
@@ -13,7 +14,7 @@ class AddReplyCommentUseCase {
         await this._commentRepository.getCommentById(commentId);
 
         const newComment = new NewReplyComment(useCasePayload);
-        return this._commentRepository.addReplyComment(newComment, credentials);
+        return this._replyRepository.addReplyComment(newComment, credentials);
     }
 }
 
