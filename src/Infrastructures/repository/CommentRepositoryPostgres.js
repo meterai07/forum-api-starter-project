@@ -130,6 +130,22 @@ class CommentRepositoryPostgres extends CommentRepository {
             throw new NotFoundError('Balasan gagal dihapus. Id tidak ditemukan');
         }
     }
+
+    async getCommentsByThreadId(threadId) {
+        const query = {
+            text: `
+                SELECT comments.id, comments.content, comments.date, comments.is_deleted, comments.thread_id, users.username
+                FROM comments
+                JOIN users ON users.id = comments.owner
+                WHERE comments.thread_id = $1
+                ORDER BY comments.date ASC
+            `,
+            values: [threadId],
+        };
+
+        const result = await this._pool.query(query);
+        return result.rows;
+    }
 }
 
 module.exports = CommentRepositoryPostgres;

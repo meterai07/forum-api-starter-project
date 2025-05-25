@@ -24,6 +24,7 @@ DomainErrorTranslator._directories = {
   'NEW_REPLY_COMMENT.NOT_CONTAIN_NEEDED_PROPERTY': new InvariantError('tidak dapat membuat balasan baru karena properti yang dibutuhkan tidak ada'),
   'NEW_REPLY_COMMENT.NOT_MEET_DATA_TYPE_SPECIFICATION': new InvariantError('tidak dapat membuat balasan baru karena tipe data tidak sesuai'),
   'DETAIL_THREAD.NOT_CONTAIN_VALID_THREAD': new InvariantError('detail thread tidak mengandung thread yang valid'),
+  'REPLY_REPOSITORY.METHOD_NOT_IMPLEMENTED': new InvariantError('repository tidak mengimplementasikan method yang dibutuhkan'),
 };
 
 module.exports = DomainErrorTranslator;
