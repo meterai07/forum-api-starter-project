@@ -3,160 +3,80 @@ const InvariantError = require('../../../Commons/exceptions/InvariantError');
 const NotFoundError = require('../../../Commons/exceptions/NotFoundError');
 
 describe('ThreadRepositoryPostgres', () => {
-    const fakeIdGenerator = () => '123';
-    let threadRepository;
-    let mockPool;
+    const mockPool = {
+        query: jest.fn(),
+    };
+    const mockIdGenerator = jest.fn(() => '123');
 
-    beforeEach(() => {
-        mockPool = {
-            query: jest.fn(),
-        };
-        threadRepository = new ThreadRepositoryPostgres(mockPool, fakeIdGenerator);
+    const repository = new ThreadRepositoryPostgres(mockPool, mockIdGenerator);
+
+    afterEach(() => {
+        jest.clearAllMocks();
     });
 
     describe('addThread', () => {
-        it('should persist and return thread correctly', async () => {
-            const threadPayload = { title: 'Test Thread', body: 'Body content' };
-            const expectedResult = {
-                id: 'thread-123',
-                title: 'Test Thread',
-                owner: 'user-123',
-            };
+        it('should persist thread and return it correctly', async () => {
+            const newThread = { title: 'A Title', body: 'Some content' };
+            const credentials = 'user-1';
 
-            mockPool.query.mockResolvedValue({ rows: [expectedResult] });
+            mockPool.query.mockResolvedValue({
+                rows: [{ id: 'thread-123', title: 'A Title', owner: 'user-1' }],
+            });
 
-            const result = await threadRepository.addThread(threadPayload, 'user-123');
-            expect(result).toEqual(expectedResult);
+            const result = await repository.addThread(newThread, credentials);
+
+            expect(mockIdGenerator).toHaveBeenCalled();
             expect(mockPool.query).toHaveBeenCalledWith(expect.objectContaining({
                 text: expect.stringContaining('INSERT INTO threads'),
-                values: expect.arrayContaining([
-                    'thread-123',
-                    threadPayload.title,
-                    threadPayload.body,
-                    expect.any(String), // ISO date string
-                    'user-123',
-                ]),
+                values: expect.arrayContaining(['thread-123', 'A Title', 'Some content', expect.any(String), 'user-1']),
             }));
+            expect(result).toEqual({ id: 'thread-123', title: 'A Title', owner: 'user-1' });
         });
 
-        it('should throw InvariantError if thread insertion fails', async () => {
+        it('should throw InvariantError when insert fails', async () => {
             mockPool.query.mockResolvedValue({ rows: [] });
 
-            await expect(threadRepository.addThread({ title: 'x', body: 'y' }, 'user-123'))
-                .rejects.toThrow(InvariantError);
+            await expect(repository.addThread({ title: 'fail', body: 'fail' }, 'user-1'))
+                .rejects
+                .toThrow(InvariantError);
         });
     });
 
     describe('getThreadById', () => {
-        it('should return structured thread with comments and replies', async () => {
+        it('should return thread, comments, and replies correctly', async () => {
             const threadId = 'thread-123';
 
-            const threadQueryResult = {
-                rows: [
-                    {
-                        thread_id: 'thread-123',
-                        title: 'Sample Title',
-                        body: 'Thread body',
-                        date: '2021-08-01T00:00:00.000Z',
-                        thread_owner: 'john_doe',
-                        comment_id: 'comment-1',
-                        comment_content: 'First comment',
-                        comment_date: '2021-08-01T01:00:00.000Z',
-                        comment_is_deleted: false,
-                        comment_username: 'jane_doe',
-                    },
-                ],
-            };
-
-            const repliesQueryResult = {
-                rows: [
-                    {
-                        reply_id: 'reply-1',
-                        reply_content: 'Reply 1',
-                        reply_date: '2021-08-01T02:00:00.000Z',
-                        reply_is_deleted: false,
-                        comment_id: 'comment-1',
-                        reply_username: 'alice',
-                    },
-                ],
-            };
-
             mockPool.query
-                .mockResolvedValueOnce(threadQueryResult)
-                .mockResolvedValueOnce(repliesQueryResult);
+                .mockResolvedValueOnce({ rows: [{ id: threadId, title: 'T', body: 'B', date: '2022', username: 'user1' }] }) // thread
+                .mockResolvedValueOnce({ rows: [{ id: 'comment-1', content: 'c', date: '2022', is_deleted: false, thread_id: threadId, username: 'user2' }] }) // comments
+                .mockResolvedValueOnce({ rows: [{ id: 'reply-1', content: 'r', date: '2022', is_deleted: false, comment_id: 'comment-1', username: 'user3' }] }); // replies
 
-            const result = await threadRepository.getThreadById(threadId);
+            const result = await repository.getThreadById(threadId);
 
-            expect(result).toEqual({
-                id: 'thread-123',
-                title: 'Sample Title',
-                body: 'Thread body',
-                date: '2021-08-01T00:00:00.000Z',
-                username: 'john_doe',
-                comments: [
-                    {
-                        id: 'comment-1',
-                        content: 'First comment',
-                        date: '2021-08-01T01:00:00.000Z',
-                        username: 'jane_doe',
-                        replies: [
-                            {
-                                id: 'reply-1',
-                                content: 'Reply 1',
-                                date: '2021-08-01T02:00:00.000Z',
-                                username: 'alice',
-                            },
-                        ],
-                    },
-                ],
-            });
+            expect(mockPool.query).toHaveBeenCalledTimes(3);
+            expect(result.thread.id).toEqual(threadId);
+            expect(result.comments).toHaveLength(1);
+            expect(result.replies).toHaveLength(1);
         });
 
-        it('should replace deleted comments and replies content with placeholder', async () => {
-            const threadQueryResult = {
-                rows: [
-                    {
-                        thread_id: 'thread-123',
-                        title: 'Title',
-                        body: 'Body',
-                        date: '2021-08-01',
-                        thread_owner: 'owner1',
-                        comment_id: 'comment-1',
-                        comment_content: 'Deleted comment',
-                        comment_date: '2021-08-01',
-                        comment_is_deleted: true,
-                        comment_username: 'user1',
-                    },
-                ],
-            };
+        it('should throw NotFoundError when thread is not found', async () => {
+            mockPool.query.mockResolvedValueOnce({ rows: [] });
 
-            const repliesQueryResult = {
-                rows: [
-                    {
-                        reply_id: 'reply-1',
-                        reply_content: 'Deleted reply',
-                        reply_date: '2021-08-01',
-                        reply_is_deleted: true,
-                        comment_id: 'comment-1',
-                        reply_username: 'user2',
-                    },
-                ],
-            };
+            await expect(repository.getThreadById('unknown')).rejects.toThrow(NotFoundError);
+        });
+    });
 
-            mockPool.query
-                .mockResolvedValueOnce(threadQueryResult)
-                .mockResolvedValueOnce(repliesQueryResult);
+    describe('verifyThreadAvailability', () => {
+        it('should not throw error if thread exists', async () => {
+            mockPool.query.mockResolvedValueOnce({ rows: [{ id: 'thread-123' }] });
 
-            const result = await threadRepository.getThreadById('thread-123');
-
-            expect(result.comments[0].content).toBe('**komentar telah dihapus**');
-            expect(result.comments[0].replies[0].content).toBe('**balasan telah dihapus**');
+            await expect(repository.verifyThreadAvailability('thread-123')).resolves.not.toThrow();
         });
 
         it('should throw NotFoundError if thread does not exist', async () => {
             mockPool.query.mockResolvedValueOnce({ rows: [] });
 
-            await expect(threadRepository.getThreadById('not-found-id')).rejects.toThrow(NotFoundError);
+            await expect(repository.verifyThreadAvailability('not-found')).rejects.toThrow(NotFoundError);
         });
     });
 });

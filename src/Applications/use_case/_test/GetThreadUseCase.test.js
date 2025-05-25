@@ -1,42 +1,51 @@
 const GetThreadUseCase = require('../GetThreadUseCase');
 const ThreadRepository = require('../../../Domains/threads/ThreadRepository');
+const DetailThread = require('../../../Domains/threads/entities/DetailThread');
 
 describe('GetThreadUseCase', () => {
-    it('should orchestrate the get thread action correctly', async () => {
-        // Arrange
+    it('should orchestrate the get thread use case correctly', async () => {
         const threadId = 'thread-123';
-        const mockThread = {
-            id: threadId,
-            title: 'A Thread Title',
-            body: 'This is the body of the thread.',
-            date: '2025-05-15T12:00:00.000Z',
-            username: 'dicoding',
+
+        const mockThreadRepository = new ThreadRepository();
+        mockThreadRepository.getThreadById = jest.fn().mockImplementation((id) => Promise.resolve({
+            thread: {
+                id,
+                title: 'A Thread Title',
+                body: 'This is the body of the thread.',
+                date: '2025-05-15T12:00:00.000Z',
+                username: 'dicoding',
+            },
             comments: [
                 {
                     id: 'comment-123',
                     content: 'A comment',
                     date: '2025-05-15T12:30:00.000Z',
                     username: 'johndoe',
-                    replies: [],
                 },
             ],
-        };
+            replies: [
+                {
+                    id: 'reply-456',
+                    content: 'A reply',
+                    date: '2025-05-15T12:45:00.000Z',
+                    username: 'janedoe',
+                    comment_id: 'comment-123',
+                },
+            ],
+        }));
 
-        // Mock the ThreadRepository
-        const mockThreadRepository = new ThreadRepository();
-        mockThreadRepository.getThreadById = jest.fn()
-            .mockImplementation(() => Promise.resolve(mockThread));
-
-        // Create an instance of GetThreadUseCase with the mocked repository
         const getThreadUseCase = new GetThreadUseCase({
             threadRepository: mockThreadRepository,
         });
 
-        // Action
-        const thread = await getThreadUseCase.execute(threadId);
+        const detailThread = await getThreadUseCase.execute(threadId);
 
-        // Assert
-        expect(thread).toStrictEqual(mockThread);
+        expect(detailThread).toBeInstanceOf(DetailThread);
         expect(mockThreadRepository.getThreadById).toBeCalledWith(threadId);
+        expect(detailThread.id).toEqual(threadId);
+        expect(detailThread.title).toEqual('A Thread Title');
+        expect(detailThread.comments[0].id).toEqual('comment-123');
+        expect(detailThread.comments[0].replies[0].id).toEqual('reply-456');
+        expect(detailThread.comments[0].replies[0].content).toEqual('A reply');
     });
 });

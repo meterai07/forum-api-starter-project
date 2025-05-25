@@ -1,52 +1,50 @@
 const AddReplyCommentUseCase = require('../AddReplyCommentUseCase');
-const ThreadRepository = require('../../../Domains/threads/ThreadRepository');
-const CommentRepository = require('../../../Domains/comments/CommentRepository');
 const NewReplyComment = require('../../../Domains/comments/entities/NewReplyComment');
 
 describe('AddReplyCommentUseCase', () => {
-    it('should orchestrate the add reply comment action correctly', async () => {
-        // Arrange
-        const useCasePayload = {
-            threadId: 'thread-123',
-            commentId: 'comment-456',
-            content: 'This is a reply',
+    it('should orchestrate the add reply comment use case correctly', async () => {
+        const mockThreadRepository = {
+            verifyThreadAvailability: jest.fn().mockResolvedValue(),
         };
-        const credentials = 'user-123';
-
-        const mockAddedReply = {
-            id: 'reply-789',
-            content: useCasePayload.content,
-            owner: credentials,
+        const mockCommentRepository = {
+            getCommentById: jest.fn().mockResolvedValue(),
+            addReplyComment: jest.fn().mockResolvedValue({
+                id: 'reply-001',
+                content: 'This is a reply',
+                owner: 'user-123',
+            }),
         };
 
-        // Mock the ThreadRepository
-        const mockThreadRepository = new ThreadRepository();
-        mockThreadRepository.getThreadById = jest.fn()
-            .mockImplementation(() => Promise.resolve());
-
-        // Mock the CommentRepository
-        const mockCommentRepository = new CommentRepository();
-        mockCommentRepository.getCommentById = jest.fn()
-            .mockImplementation(() => Promise.resolve());
-        mockCommentRepository.addReplyComment = jest.fn()
-            .mockImplementation(() => Promise.resolve(mockAddedReply));
-
-        // Create an instance of AddReplyCommentUseCase with the mocked repositories
-        const addReplyCommentUseCase = new AddReplyCommentUseCase({
-            threadRepository: mockThreadRepository,
+        const useCase = new AddReplyCommentUseCase({
             commentRepository: mockCommentRepository,
+            threadRepository: mockThreadRepository,
         });
 
-        // Action
-        const addedReply = await addReplyCommentUseCase.execute(useCasePayload, credentials);
+        const useCasePayload = {
+            threadId: 'thread-001',
+            commentId: 'comment-001',
+            content: 'This is a reply',
+        };
 
-        // Assert
-        expect(addedReply).toStrictEqual(mockAddedReply);
-        expect(mockThreadRepository.getThreadById).toBeCalledWith(useCasePayload.threadId);
-        expect(mockCommentRepository.getCommentById).toBeCalledWith(useCasePayload.commentId);
-        expect(mockCommentRepository.addReplyComment).toBeCalledWith(
-            new NewReplyComment(useCasePayload),
-            credentials
-        );
+        const credentials = {
+            userId: 'user-123',
+        };
+
+        const result = await useCase.execute(useCasePayload, credentials);
+
+        expect(mockThreadRepository.verifyThreadAvailability)
+            .toHaveBeenCalledWith(useCasePayload.threadId);
+
+        expect(mockCommentRepository.getCommentById)
+            .toHaveBeenCalledWith(useCasePayload.commentId);
+
+        expect(mockCommentRepository.addReplyComment)
+            .toHaveBeenCalledWith(expect.any(NewReplyComment), credentials);
+
+        expect(result).toEqual({
+            id: 'reply-001',
+            content: 'This is a reply',
+            owner: 'user-123',
+        });
     });
 });

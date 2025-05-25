@@ -30,3 +30,5 @@ class DetailThread {
         });
     }
 }
+
+module.exports = DetailThread;

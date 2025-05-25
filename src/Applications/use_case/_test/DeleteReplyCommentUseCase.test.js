@@ -1,50 +1,48 @@
 const DeleteReplyCommentUseCase = require('../DeleteReplyCommentUseCase');
-const ThreadRepository = require('../../../Domains/threads/ThreadRepository');
-const CommentRepository = require('../../../Domains/comments/CommentRepository');
 
 describe('DeleteReplyCommentUseCase', () => {
-    it('should orchestrate the delete reply comment action correctly', async () => {
-        // Arrange
-        const useCasePayload = {
-            threadId: 'thread-123',
-            commentId: 'comment-456',
-            replyId: 'reply-789',
+    it('should orchestrate the delete reply comment use case correctly', async () => {
+        const mockThreadRepository = {
+            verifyThreadAvailability: jest.fn().mockResolvedValue(),
         };
-        const credentials = 'user-123';
 
-        // Mock the ThreadRepository
-        const mockThreadRepository = new ThreadRepository();
-        mockThreadRepository.getThreadById = jest.fn()
-            .mockImplementation(() => Promise.resolve());
+        const mockCommentRepository = {
+            getCommentById: jest.fn().mockResolvedValue(),
+            getReplyCommentById: jest.fn().mockResolvedValue(),
+            verifyReplyCommentOwner: jest.fn().mockResolvedValue(),
+            deleteReplyCommentById: jest.fn().mockResolvedValue(),
+        };
 
-        // Mock the CommentRepository
-        const mockCommentRepository = new CommentRepository();
-        mockCommentRepository.getCommentById = jest.fn()
-            .mockImplementation(() => Promise.resolve());
-        mockCommentRepository.getReplyCommentById = jest.fn()
-            .mockImplementation(() => Promise.resolve());
-        mockCommentRepository.verifyReplyCommentOwner = jest.fn()
-            .mockImplementation(() => Promise.resolve());
-        mockCommentRepository.deleteReplyCommentById = jest.fn()
-            .mockImplementation(() => Promise.resolve());
-
-        // Create an instance of DeleteReplyCommentUseCase with the mocked repositories
-        const deleteReplyCommentUseCase = new DeleteReplyCommentUseCase({
-            threadRepository: mockThreadRepository,
+        const useCase = new DeleteReplyCommentUseCase({
             commentRepository: mockCommentRepository,
+            threadRepository: mockThreadRepository,
         });
 
-        // Action
-        await deleteReplyCommentUseCase.execute(useCasePayload, credentials);
+        const useCasePayload = {
+            threadId: 'thread-001',
+            commentId: 'comment-001',
+            replyId: 'reply-001',
+        };
 
-        // Assert
-        expect(mockThreadRepository.getThreadById).toBeCalledWith(useCasePayload.threadId);
-        expect(mockCommentRepository.getCommentById).toBeCalledWith(useCasePayload.commentId);
-        expect(mockCommentRepository.getReplyCommentById).toBeCalledWith(useCasePayload.replyId);
-        expect(mockCommentRepository.verifyReplyCommentOwner).toBeCalledWith(
-            useCasePayload.replyId,
-            credentials
-        );
-        expect(mockCommentRepository.deleteReplyCommentById).toBeCalledWith(useCasePayload.replyId);
+        const credentials = {
+            userId: 'user-123',
+        };
+
+        await useCase.execute(useCasePayload, credentials);
+
+        expect(mockThreadRepository.verifyThreadAvailability)
+            .toHaveBeenCalledWith('thread-001');
+
+        expect(mockCommentRepository.getCommentById)
+            .toHaveBeenCalledWith('comment-001');
+
+        expect(mockCommentRepository.getReplyCommentById)
+            .toHaveBeenCalledWith('reply-001');
+
+        expect(mockCommentRepository.verifyReplyCommentOwner)
+            .toHaveBeenCalledWith('reply-001', credentials);
+
+        expect(mockCommentRepository.deleteReplyCommentById)
+            .toHaveBeenCalledWith('reply-001');
     });
 });
