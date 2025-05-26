@@ -1,94 +1,80 @@
+const pool = require('../../../Infrastructures/database/postgres/pool');
 const ThreadRepositoryPostgres = require('../ThreadRepositoryPostgres');
-const InvariantError = require('../../../Commons/exceptions/InvariantError');
-const NotFoundError = require('../../../Commons/exceptions/NotFoundError');
+const UsersTableTestHelper = require('../../../../tests/UsersTableTestHelper');
+const ThreadsTableTestHelper = require('../../../../tests/ThreadsTableTestHelper');
 
-describe('ThreadRepositoryPostgres', () => {
-    let threadRepository;
-    let mockPool;
-    let mockIdGenerator;
+describe('ThreadRepositoryPostgres (integration)', () => {
+    const fakeIdGenerator = () => '123';
+    const threadRepository = new ThreadRepositoryPostgres(pool, fakeIdGenerator);
 
-    beforeEach(() => {
-        mockPool = {
-            query: jest.fn(),
-        };
-        mockIdGenerator = jest.fn().mockReturnValue('123');
-        threadRepository = new ThreadRepositoryPostgres(mockPool, mockIdGenerator);
+    beforeEach(async () => {
+        await UsersTableTestHelper.cleanTable();
+        await ThreadsTableTestHelper.cleanTable();
+    });
+
+    afterEach(async () => {
+        await UsersTableTestHelper.cleanTable();
+        await ThreadsTableTestHelper.cleanTable();
+    });
+
+    afterAll(async () => {
+        await pool.end();
     });
 
     describe('addThread', () => {
-        it('should add thread and return added thread data', async () => {
-            const fakeDbResponse = {
-                rows: [
-                    { id: 'thread-123', title: 'title', owner: 'user-1' },
-                ],
+        it('should persist new thread and return it correctly', async () => {
+            await UsersTableTestHelper.addUser({ id: 'user-abc', username: 'user1' });
+
+            const newThread = {
+                title: 'test thread',
+                body: 'this is a test thread',
             };
-            mockPool.query.mockResolvedValue(fakeDbResponse);
+            const owner = 'user-abc';
 
-            const threadPayload = { title: 'title', body: 'body' };
-            const owner = 'user-1';
+            const result = await threadRepository.addThread(newThread, owner);
 
-            const result = await threadRepository.addThread(threadPayload, owner);
-
-            expect(mockPool.query).toHaveBeenCalledWith(expect.objectContaining({
-                text: expect.stringContaining('INSERT INTO threads'),
-                values: expect.arrayContaining(['thread-123', 'title', 'body', expect.any(String), owner]),
-            }));
-            expect(result).toEqual(fakeDbResponse.rows[0]);
-        });
-
-        it('should throw InvariantError if insertion fails', async () => {
-            mockPool.query.mockResolvedValue({ rows: [] });
-
-            const threadPayload = { title: 'title', body: 'body' };
-            const owner = 'user-1';
-
-            await expect(threadRepository.addThread(threadPayload, owner))
-                .rejects.toThrow(InvariantError);
+            expect(result).toEqual({
+                id: 'thread-123',
+                title: 'test thread',
+                owner: 'user-abc',
+            });
         });
     });
 
     describe('getThreadById', () => {
-        it('should return thread details when found', async () => {
-            const fakeThread = {
-                id: 'thread-123',
-                title: 'thread title',
-                body: 'thread body',
-                date: '2023-01-01T00:00:00Z',
-                username: 'userA',
-            };
-            mockPool.query.mockResolvedValue({ rows: [fakeThread] });
+        it('should return thread details by id', async () => {
+            await UsersTableTestHelper.addUser({ id: 'user-1', username: 'user1' });
+            await ThreadsTableTestHelper.addThread({ id: 'thread-1', owner: 'user-1' });
 
-            const result = await threadRepository.getThreadById('thread-123');
+            const result = await threadRepository.getThreadById('thread-1');
 
-            expect(mockPool.query).toHaveBeenCalledWith(expect.objectContaining({
-                text: expect.stringContaining('SELECT threads.id'),
-                values: ['thread-123'],
-            }));
-
-            expect(result).toEqual(fakeThread);
+            expect(result).toEqual({
+                id: 'thread-1',
+                title: 'title',
+                body: 'body',
+                date: expect.any(String),
+                username: 'user1',
+            });
         });
 
-        it('should throw NotFoundError if thread not found', async () => {
-            mockPool.query.mockResolvedValue({ rows: [] });
-
-            await expect(threadRepository.getThreadById('thread-123'))
-                .rejects.toThrow(NotFoundError);
+        it('should throw NotFoundError when thread not found', async () => {
+            await expect(threadRepository.getThreadById('non-existing-thread-id'))
+                .rejects.toThrow('Thread tidak ditemukan');
         });
     });
 
     describe('verifyThreadAvailability', () => {
-        it('should not throw error if thread exists', async () => {
-            mockPool.query.mockResolvedValue({ rows: [{ id: 'thread-123' }] });
+        it('should not throw NotFoundError when thread exists', async () => {
+            await UsersTableTestHelper.addUser({ id: 'user-1', username: 'user1' });
+            await ThreadsTableTestHelper.addThread({ id: 'thread-1', owner: 'user-1' });
 
-            await expect(threadRepository.verifyThreadAvailability('thread-123'))
+            await expect(threadRepository.verifyThreadAvailability('thread-1'))
                 .resolves.not.toThrow();
         });
 
-        it('should throw NotFoundError if thread does not exist', async () => {
-            mockPool.query.mockResolvedValue({ rows: [] });
-
-            await expect(threadRepository.verifyThreadAvailability('thread-123'))
-                .rejects.toThrow(NotFoundError);
+        it('should throw NotFoundError when thread does not exist', async () => {
+            await expect(threadRepository.verifyThreadAvailability('non-existing-thread-id'))
+                .rejects.toThrow('Thread tidak ditemukan');
         });
     });
 });

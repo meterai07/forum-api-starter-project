@@ -1,68 +1,251 @@
+const pool = require('../../database/postgres/pool'); // real pool instance
 const ReplyRepositoryPostgres = require('../ReplyRepositoryPostgres');
-const Reply = require('../../../Domains/replies/entities/Reply');
+const ThreadsTableTestHelper = require('../../../../tests/ThreadsTableTestHelper');
+const CommentsTableTestHelper = require('../../../../tests/CommentsTableTestHelper');
+const RepliesTableTestHelper = require('../../../../tests/RepliesTableTestHelper');
+const UsersTableTestHelper = require('../../../../tests/UsersTableTestHelper');
 
-describe('ReplyRepositoryPostgres', () => {
-    let replyRepository;
-    let mockPool;
+describe('ReplyRepositoryPostgres (integration)', () => {
+    const fakeIdGenerator = () => '123';
+    const replyRepository = new ReplyRepositoryPostgres(pool, fakeIdGenerator);
 
-    beforeEach(() => {
-        mockPool = {
-            query: jest.fn(),
-        };
-        replyRepository = new ReplyRepositoryPostgres(mockPool);
+    beforeEach(async () => {
+        await UsersTableTestHelper.cleanTable();
+        await ThreadsTableTestHelper.cleanTable();
+        await CommentsTableTestHelper.cleanTable();
+        await RepliesTableTestHelper.cleanTable();
+    });
+
+    afterEach(async () => {
+        await UsersTableTestHelper.cleanTable();
+        await ThreadsTableTestHelper.cleanTable();
+        await CommentsTableTestHelper.cleanTable();
+        await RepliesTableTestHelper.cleanTable();
+    });
+
+    afterAll(async () => {
+        await pool.end();
     });
 
     describe('getRepliesByThreadId', () => {
-        it('should execute correct SQL query and return the replies', async () => {
-            const threadId = 'thread-123';
+        it('should return all replies related to the thread', async () => {
+            await UsersTableTestHelper.addUser({ id: 'user-1', username: 'userA' });
+            await UsersTableTestHelper.addUser({ id: 'user-2', username: 'userB' });
 
-            const fakeReplies = [
-                new Reply({
-                    id: 'reply-1',
-                    content: 'first reply',
-                    date: '2023-01-01T00:00:00Z',
-                    isDeleted: false,
-                    commentId: 'comment-1',
-                    username: 'userA',
-                }),
-                new Reply({
-                    id: 'reply-2',
-                    content: 'second reply',
-                    date: '2023-01-01T00:01:00Z',
-                    isDeleted: true,
-                    commentId: 'comment-2',
-                    username: 'userB',
-                }),
-            ];
+            await ThreadsTableTestHelper.addThread({ id: 'thread-123', owner: 'user-1' });
 
-            mockPool.query.mockResolvedValue({
-                rows: fakeReplies.map(r => ({
-                    id: r.id,
-                    content: r.content,
-                    date: r.date,
-                    is_deleted: r.isDeleted,
-                    comment_id: r.commentId,
-                    username: r.username,
-                })),
+            await CommentsTableTestHelper.addComment({
+                id: 'comment-1',
+                threadId: 'thread-123',
+                content: 'a comment',
+                owner: 'user-2',
             });
 
-            const result = await replyRepository.getRepliesByThreadId(threadId);
+            await RepliesTableTestHelper.addReply({
+                id: 'reply-1',
+                commentId: 'comment-1',
+                content: 'first reply',
+                owner: 'user-1',
+                date: '2023-01-01T00:00:00Z',
+                isDeleted: false,
+            });
 
-            expect(mockPool.query).toHaveBeenCalledWith(expect.objectContaining({
-                text: expect.stringContaining('SELECT replies.id'),
-                values: [threadId],
-            }));
+            await RepliesTableTestHelper.addReply({
+                id: 'reply-2',
+                commentId: 'comment-1',
+                content: 'second reply',
+                owner: 'user-2',
+                date: '2023-01-01T00:01:00Z',
+                isDeleted: true,
+            });
 
+            const result = await replyRepository.getRepliesByThreadId('thread-123');
+
+            expect(result).toHaveLength(2);
             expect(result).toEqual(
-                fakeReplies.map(r => expect.objectContaining({
-                    id: r.id,
-                    content: r.content,
-                    date: r.date,
-                    is_deleted: r.isDeleted,
-                    comment_id: r.commentId,
-                    username: r.username,
-                }))
+                expect.arrayContaining([
+                    expect.objectContaining({
+                        id: 'reply-1',
+                        content: 'first reply',
+                        date: '2023-01-01T00:00:00Z',
+                        is_deleted: false,
+                        comment_id: 'comment-1',
+                        username: 'userA',
+                    }),
+                    expect.objectContaining({
+                        id: 'reply-2',
+                        content: 'second reply',
+                        date: '2023-01-01T00:01:00Z',
+                        is_deleted: true,
+                        comment_id: 'comment-1',
+                        username: 'userB',
+                    }),
+                ])
             );
+        });
+
+        it('should return an empty array if no replies exist for the thread', async () => {
+            await UsersTableTestHelper.addUser({ id: 'user-1', username: 'userA' });
+            await ThreadsTableTestHelper.addThread({
+                id: 'thread-123',
+                owner: 'user-1',
+            });
+            const result = await replyRepository.getRepliesByThreadId('thread-123');
+            expect(result).toEqual([]);
+        });
+    });
+
+    describe('addReplyComment', () => {
+        it('should persist reply and return it correctly', async () => {
+            await UsersTableTestHelper.addUser({ id: 'user-1', username: 'userA' });
+            await UsersTableTestHelper.addUser({ id: 'user-2', username: 'userB' });
+
+            await ThreadsTableTestHelper.addThread({ id: 'thread-123', owner: 'user-1' });
+
+            await CommentsTableTestHelper.addComment({
+                id: 'comment-1',
+                threadId: 'thread-123',
+                content: 'a comment',
+                owner: 'user-2',
+            });
+
+            const reply = {
+                content: 'This is a reply',
+                commentId: 'comment-1',
+            };
+
+            const result = await replyRepository.addReplyComment(reply, 'user-1');
+
+            expect(result).toEqual({
+                id: expect.stringMatching(/^reply-/),
+                content: reply.content,
+                owner: 'user-1',
+            });
+
+            const persistedReply = await RepliesTableTestHelper.findReplyById(result.id);
+            expect(persistedReply).toHaveLength(1);
+        });
+    });
+
+    describe('getReplyCommentById', () => {
+        it('should return reply by id', async () => {
+            await UsersTableTestHelper.addUser({ id: 'user-1', username: 'userA' });
+            await UsersTableTestHelper.addUser({ id: 'user-2', username: 'userB' });
+
+            await ThreadsTableTestHelper.addThread({ id: 'thread-123', owner: 'user-1' });
+
+            await CommentsTableTestHelper.addComment({
+                id: 'comment-1',
+                threadId: 'thread-123',
+                content: 'a comment',
+                owner: 'user-2',
+            });
+
+            await RepliesTableTestHelper.addReply({
+                id: 'reply-123',
+                commentId: 'comment-1',
+                content: 'This is a reply',
+                owner: 'user-1',
+            });
+
+            const result = await replyRepository.getReplyCommentById('reply-123');
+            expect(result).toEqual({
+                id: 'reply-123',
+                content: 'This is a reply',
+                date: expect.any(String),
+                owner: 'user-1',
+            });
+        });
+
+        it('should throw NotFoundError if reply does not exist', async () => {
+            await expect(replyRepository.getReplyCommentById('non-existent-reply')).rejects.toThrow('Balasan tidak ditemukan');
+        });
+    });
+
+    describe('verifyReplyCommentOwner', () => {
+        it('should verify reply owner', async () => {
+            await UsersTableTestHelper.addUser({ id: 'user-1', username: 'userA' });
+            await UsersTableTestHelper.addUser({ id: 'user-2', username: 'userB' });
+
+            await ThreadsTableTestHelper.addThread({ id: 'thread-123', owner: 'user-1' });
+
+            await CommentsTableTestHelper.addComment({
+                id: 'comment-1',
+                threadId: 'thread-123',
+                content: 'a comment',
+                owner: 'user-2',
+            });
+
+            await RepliesTableTestHelper.addReply({
+                id: 'reply-123',
+                commentId: 'comment-1',
+                content: 'This is a reply',
+                owner: 'user-1',
+            });
+
+            const result = await replyRepository.verifyReplyCommentOwner('reply-123', 'user-1');
+            expect(result).toBe(true);
+        });
+
+        it('should throw NotFoundError if reply does not exist', async () => {
+            await expect(replyRepository.verifyReplyCommentOwner('non-existent-reply', 'user-1')).rejects.toThrow('Balasan tidak ditemukan');
+        });
+
+        it('should throw NotFoundError if owner does not match', async () => {
+            await UsersTableTestHelper.addUser({ id: 'user-1', username: 'userA' });
+            await UsersTableTestHelper.addUser({ id: 'user-2', username: 'userB' });
+
+            await ThreadsTableTestHelper.addThread({ id: 'thread-123', owner: 'user-1' });
+
+            await CommentsTableTestHelper.addComment({
+                id: 'comment-1',
+                threadId: 'thread-123',
+                content: 'a comment',
+                owner: 'user-2',
+            });
+
+            await RepliesTableTestHelper.addReply({
+                id: 'reply-123',
+                commentId: 'comment-1',
+                content: 'This is a reply',
+                owner: 'user-1',
+            });
+
+            await expect(replyRepository.verifyReplyCommentOwner('reply-123', 'user-2')).rejects.toThrow('Anda tidak berhak menghapus balasan ini');
+        });
+    });
+
+    describe('deleteReplyCommentById', () => {
+        it('should soft delete reply by id (set is_deleted to true)', async () => {
+            await UsersTableTestHelper.addUser({ id: 'user-1', username: 'userA' });
+            await UsersTableTestHelper.addUser({ id: 'user-2', username: 'userB' });
+
+            await ThreadsTableTestHelper.addThread({ id: 'thread-123', owner: 'user-1' });
+
+            await CommentsTableTestHelper.addComment({
+                id: 'comment-1',
+                threadId: 'thread-123',
+                content: 'a comment',
+                owner: 'user-2',
+            });
+
+            await RepliesTableTestHelper.addReply({
+                id: 'reply-123',
+                commentId: 'comment-1',
+                content: 'This is a reply',
+                owner: 'user-1',
+                isDeleted: false,
+            });
+
+            await replyRepository.deleteReplyCommentById('reply-123');
+
+            const [result] = await RepliesTableTestHelper.findReplyById('reply-123');
+            expect(result).toBeDefined();
+            expect(result.is_deleted).toBe(true);
+        });
+
+        it('should throw NotFoundError if reply does not exist', async () => {
+            await expect(replyRepository.deleteReplyCommentById('non-existent-reply')).rejects.toThrow('Balasan gagal dihapus. Id tidak ditemukan');
         });
     });
 });

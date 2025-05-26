@@ -27,22 +27,7 @@ class CommentRepositoryPostgres extends CommentRepository {
         return result.rows[0];
     }
 
-    async deleteCommentById(id, credentials) {
-        const verifyQuery = {
-            text: 'SELECT owner FROM comments WHERE id = $1',
-            values: [id],
-        };
-
-        const verifyResult = await this._pool.query(verifyQuery);
-        if (!verifyResult.rows.length) {
-            throw new NotFoundError('Comment gagal dihapus. Id tidak ditemukan');
-        }
-
-        const { owner } = verifyResult.rows[0];
-        if (owner !== credentials) {
-            throw new AuthorizationError('Anda tidak berhak menghapus komentar ini');
-        }
-
+    async deleteCommentById(id) {
         const deleteQuery = {
             text: 'UPDATE comments SET is_deleted = true WHERE id = $1 RETURNING id',
             values: [id],
@@ -81,6 +66,25 @@ class CommentRepositoryPostgres extends CommentRepository {
 
         const result = await this._pool.query(query);
         return result.rows;
+    }
+
+    async verifyCommentOwner(id, credentials) {
+        const query = {
+            text: 'SELECT owner FROM comments WHERE id = $1',
+            values: [id],
+        };
+
+        const result = await this._pool.query(query);
+        if (!result.rows.length) {
+            throw new NotFoundError('Comment tidak ditemukan');
+        }
+
+        const { owner } = result.rows[0];
+        if (owner !== credentials) {
+            throw new AuthorizationError('Anda tidak berhak menghapus komentar ini');
+        }
+
+        return true;
     }
 }
 

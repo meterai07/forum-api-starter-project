@@ -78,6 +78,8 @@ class ReplyRepositoryPostgres extends ReplyRepository {
         if (owner !== credentials) {
             throw new AuthorizationError('Anda tidak berhak menghapus balasan ini');
         }
+
+        return true;
     }
 
     async deleteReplyCommentById(id) {
@@ -90,6 +92,8 @@ class ReplyRepositoryPostgres extends ReplyRepository {
         if (!result.rows.length) {
             throw new NotFoundError('Balasan gagal dihapus. Id tidak ditemukan');
         }
+
+        return result.rows[0];
     }
 }
 
