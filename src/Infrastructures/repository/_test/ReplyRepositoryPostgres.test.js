@@ -211,7 +211,7 @@ describe('ReplyRepositoryPostgres (integration)', () => {
             await expect(replyRepository.verifyReplyCommentOwner('reply-123', 'user-1'))
                 .resolves
                 .not
-                .toThrow();
+                .toThrow(AuthorizationError);
         });
 
         it('should throw NotFoundError if reply does not exist', async () => {

@@ -7,7 +7,12 @@ describe('DeleteReplyCommentUseCase', () => {
         };
 
         const mockCommentRepository = {
-            getCommentById: jest.fn().mockResolvedValue(),
+            getCommentById: jest.fn().mockResolvedValue({
+                id: 'comment-001',
+                content: 'This is a comment',
+                date: '2024-01-01T00:00:00.000Z',
+                owner: 'user-123',
+            }),
         };
 
         const mockReplyRepository = {
