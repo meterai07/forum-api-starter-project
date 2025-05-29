@@ -18,6 +18,7 @@ describe('GetThreadUseCase', () => {
                 date: '2021-01-01',
                 username: 'userB',
                 is_deleted: false,
+                thread_id: 'thread-123',
             },
         ];
 

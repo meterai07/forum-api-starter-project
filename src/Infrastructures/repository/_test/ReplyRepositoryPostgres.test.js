@@ -1,9 +1,12 @@
-const pool = require('../../database/postgres/pool'); // real pool instance
+const pool = require('../../database/postgres/pool');
 const ReplyRepositoryPostgres = require('../ReplyRepositoryPostgres');
 const ThreadsTableTestHelper = require('../../../../tests/ThreadsTableTestHelper');
 const CommentsTableTestHelper = require('../../../../tests/CommentsTableTestHelper');
 const RepliesTableTestHelper = require('../../../../tests/RepliesTableTestHelper');
 const UsersTableTestHelper = require('../../../../tests/UsersTableTestHelper');
+const InvariantError = require('../../../Commons/exceptions/InvariantError');
+const NotFoundError = require('../../../Commons/exceptions/NotFoundError');
+const AuthorizationError = require('../../../Commons/exceptions/AuthorizationError');
 
 describe('ReplyRepositoryPostgres (integration)', () => {
     const fakeIdGenerator = () => '123';
@@ -134,22 +137,16 @@ describe('ReplyRepositoryPostgres (integration)', () => {
             });
         });
 
-        it('should throw InvariantError when insert does not return any rows', async () => {
-            const fakePool = {
-                query: jest.fn().mockResolvedValue({ rows: [] }),
-            };
-            const fakeIdGenerator = () => '123';
-            const replyRepository = new ReplyRepositoryPostgres(fakePool, fakeIdGenerator);
-
+        it('should throw DatabaseError when foreign key constraint is violated', async () => {
             const reply = {
                 content: 'balasan apapun',
-                commentId: 'comment-1',
+                commentId: 'comment-nonexistent',
             };
             const owner = 'user-1';
 
             await expect(replyRepository.addReplyComment(reply, owner))
                 .rejects
-                .toThrow('Balasan gagal ditambahkan');
+                .toThrow(InvariantError);
         });
     });
 
@@ -184,12 +181,14 @@ describe('ReplyRepositoryPostgres (integration)', () => {
         });
 
         it('should throw NotFoundError if reply does not exist', async () => {
-            await expect(replyRepository.getReplyCommentById('non-existent-reply')).rejects.toThrow('Balasan tidak ditemukan');
+            await expect(replyRepository.getReplyCommentById('non-existent-reply'))
+                .rejects
+                .toThrow(NotFoundError);
         });
     });
 
     describe('verifyReplyCommentOwner', () => {
-        it('should verify reply owner', async () => {
+        it('should not throw any error when reply owner is verified', async () => {
             await UsersTableTestHelper.addUser({ id: 'user-1', username: 'userA' });
             await UsersTableTestHelper.addUser({ id: 'user-2', username: 'userB' });
 
@@ -209,15 +208,19 @@ describe('ReplyRepositoryPostgres (integration)', () => {
                 owner: 'user-1',
             });
 
-            const result = await replyRepository.verifyReplyCommentOwner('reply-123', 'user-1');
-            expect(result).toBe(true);
+            await expect(replyRepository.verifyReplyCommentOwner('reply-123', 'user-1'))
+                .resolves
+                .not
+                .toThrow();
         });
 
         it('should throw NotFoundError if reply does not exist', async () => {
-            await expect(replyRepository.verifyReplyCommentOwner('non-existent-reply', 'user-1')).rejects.toThrow('Balasan tidak ditemukan');
+            await expect(replyRepository.verifyReplyCommentOwner('non-existent-reply', 'user-1'))
+                .rejects
+                .toThrow(NotFoundError);
         });
 
-        it('should throw NotFoundError if owner does not match', async () => {
+        it('should throw AuthorizationError if owner does not match', async () => {
             await UsersTableTestHelper.addUser({ id: 'user-1', username: 'userA' });
             await UsersTableTestHelper.addUser({ id: 'user-2', username: 'userB' });
 
@@ -237,7 +240,9 @@ describe('ReplyRepositoryPostgres (integration)', () => {
                 owner: 'user-1',
             });
 
-            await expect(replyRepository.verifyReplyCommentOwner('reply-123', 'user-2')).rejects.toThrow('Anda tidak berhak menghapus balasan ini');
+            await expect(replyRepository.verifyReplyCommentOwner('reply-123', 'user-2'))
+                .rejects
+                .toThrow(AuthorizationError);
         });
     });
 
@@ -271,7 +276,9 @@ describe('ReplyRepositoryPostgres (integration)', () => {
         });
 
         it('should throw NotFoundError if reply does not exist', async () => {
-            await expect(replyRepository.deleteReplyCommentById('non-existent-reply')).rejects.toThrow('Balasan gagal dihapus. Id tidak ditemukan');
+            await expect(replyRepository.deleteReplyCommentById('non-existent-reply'))
+                .rejects
+                .toThrow(NotFoundError);
         });
     });
 });

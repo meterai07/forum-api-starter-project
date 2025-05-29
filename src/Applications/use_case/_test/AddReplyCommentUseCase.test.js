@@ -12,11 +12,12 @@ describe('AddReplyCommentUseCase', () => {
         };
 
         const mockReplyRepository = {
-            addReplyComment: jest.fn().mockResolvedValue({
+            addReplyComment: jest.fn().mockImplementation((newReply, owner) => Promise.resolve({
                 id: 'reply-001',
-                content: 'This is a reply',
-                owner: 'user-123',
-            }),
+                content: newReply.content,
+                date: '2024-01-01T00:00:00.000Z',
+                owner,
+            })),
         };
 
         const useCase = new AddReplyCommentUseCase({
@@ -47,6 +48,7 @@ describe('AddReplyCommentUseCase', () => {
         expect(result).toEqual({
             id: 'reply-001',
             content: 'This is a reply',
+            date: '2024-01-01T00:00:00.000Z',
             owner: 'user-123',
         });
     });

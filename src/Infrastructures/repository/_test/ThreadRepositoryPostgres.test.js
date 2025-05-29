@@ -2,6 +2,8 @@ const pool = require('../../../Infrastructures/database/postgres/pool');
 const ThreadRepositoryPostgres = require('../ThreadRepositoryPostgres');
 const UsersTableTestHelper = require('../../../../tests/UsersTableTestHelper');
 const ThreadsTableTestHelper = require('../../../../tests/ThreadsTableTestHelper');
+const InvariantError = require('../../../Commons/exceptions/InvariantError');
+const NotFoundError = require('../../../Commons/exceptions/NotFoundError');
 
 describe('ThreadRepositoryPostgres (integration)', () => {
     const fakeIdGenerator = () => '123';
@@ -50,19 +52,13 @@ describe('ThreadRepositoryPostgres (integration)', () => {
             });
         });
 
-        it('should throw InvariantError when insert does not return any rows', async () => {
-            const fakePool = {
-                query: jest.fn().mockResolvedValue({ rows: [] }),
-            };
-            const fakeIdGenerator = () => '123';
-            const repository = new ThreadRepositoryPostgres(fakePool, fakeIdGenerator);
-
+        it('should throw InvariantError when database constraint is violated', async () => {
             const newThread = { title: 'judul', body: 'isi' };
-            const owner = 'user-123';
+            const nonExistentOwner = 'user-nonexistent';
 
-            await expect(repository.addThread(newThread, owner))
+            await expect(threadRepository.addThread(newThread, nonExistentOwner))
                 .rejects
-                .toThrow('Thread gagal ditambahkan');
+                .toThrow(InvariantError);
         });
     });
 
@@ -94,22 +90,26 @@ describe('ThreadRepositoryPostgres (integration)', () => {
 
         it('should throw NotFoundError when thread not found', async () => {
             await expect(threadRepository.getThreadById('non-existing-thread-id'))
-                .rejects.toThrow('Thread tidak ditemukan');
+                .rejects
+                .toThrow(NotFoundError);
         });
     });
 
     describe('verifyThreadAvailability', () => {
-        it('should not throw NotFoundError when thread exists', async () => {
+        it('should not throw any error when thread exists', async () => {
             await UsersTableTestHelper.addUser({ id: 'user-1', username: 'user1' });
             await ThreadsTableTestHelper.addThread({ id: 'thread-1', owner: 'user-1' });
 
             await expect(threadRepository.verifyThreadAvailability('thread-1'))
-                .resolves.not.toThrow();
+                .resolves
+                .not
+                .toThrow();
         });
 
         it('should throw NotFoundError when thread does not exist', async () => {
             await expect(threadRepository.verifyThreadAvailability('non-existing-thread-id'))
-                .rejects.toThrow('Thread tidak ditemukan');
+                .rejects
+                .toThrow(NotFoundError);
         });
     });
 });

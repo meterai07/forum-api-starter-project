@@ -20,11 +20,18 @@ class CommentRepositoryPostgres extends CommentRepository {
             values: [id, content, date, threadId, owner],
         };
 
-        const result = await this._pool.query(query);
-        if (!result.rows.length) {
-            throw new InvariantError('Comment gagal ditambahkan');
+        try {
+            const result = await this._pool.query(query);
+            if (!result.rows.length) {
+                throw new InvariantError('Comment gagal ditambahkan');
+            }
+            return result.rows[0];
+        } catch (error) {
+            if (error.code === '23503') {
+                throw new InvariantError('Tidak dapat membuat komentar dengan thread yang tidak valid');
+            }
+            throw error;
         }
-        return result.rows[0];
     }
 
     async deleteCommentById(id) {

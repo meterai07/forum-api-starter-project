@@ -19,11 +19,18 @@ class ThreadRepositoryPostgres extends ThreadRepository {
             values: [id, title, body, date, owner],
         };
 
-        const result = await this._pool.query(query);
-        if (!result.rows.length) {
-            throw new InvariantError('Thread gagal ditambahkan');
+        try {
+            const result = await this._pool.query(query);
+            if (!result.rows.length) {
+                throw new InvariantError('Thread gagal ditambahkan');
+            }
+            return result.rows[0];
+        } catch (error) {
+            if (error.code === '23503') {
+                throw new InvariantError('Tidak dapat membuat thread dengan user yang tidak valid');
+            }
+            throw error;
         }
-        return result.rows[0];
     }
 
     async getThreadById(id) {

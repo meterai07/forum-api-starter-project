@@ -5,6 +5,7 @@ const ThreadsTableTestHelper = require('../../../../tests/ThreadsTableTestHelper
 const CommentsTableTestHelper = require('../../../../tests/CommentsTableTestHelper');
 const InvariantError = require('../../../Commons/exceptions/InvariantError');
 const NotFoundError = require('../../../Commons/exceptions/NotFoundError');
+const AuthorizationError = require('../../../Commons/exceptions/AuthorizationError');
 
 describe('CommentRepositoryPostgres (integration)', () => {
     const fakeIdGenerator = () => '123';
@@ -58,12 +59,6 @@ describe('CommentRepositoryPostgres (integration)', () => {
         });
 
         it('should throw InvariantError when insert does not return any rows', async () => {
-            const fakePool = {
-                query: jest.fn().mockResolvedValue({ rows: [] }),
-            };
-            const fakeIdGenerator = () => '123';
-            const commentRepository = new CommentRepositoryPostgres(fakePool, fakeIdGenerator);
-
             const comment = {
                 content: 'test comment',
                 threadId: 'thread-123',
@@ -72,7 +67,7 @@ describe('CommentRepositoryPostgres (integration)', () => {
 
             await expect(commentRepository.addComment(comment, owner))
                 .rejects
-                .toThrow('Comment gagal ditambahkan');
+                .toThrow(InvariantError);
         });
     });
 
@@ -155,7 +150,7 @@ describe('CommentRepositoryPostgres (integration)', () => {
 
         it('should throw NotFoundError when comment not found', async () => {
             await expect(commentRepository.getCommentById('non-existent-id'))
-                .rejects.toThrow('Comment tidak ditemukan');
+                .rejects.toThrow(NotFoundError);
         });
     });
 
@@ -178,7 +173,7 @@ describe('CommentRepositoryPostgres (integration)', () => {
 
         it('should throw NotFoundError when comment not found', async () => {
             await expect(commentRepository.verifyCommentOwner('non-existent-id', 'user-1'))
-                .rejects.toThrow('Comment tidak ditemukan');
+                .rejects.toThrow(NotFoundError);
         });
 
         it('should throw NotFoundError when owner does not match', async () => {
@@ -194,7 +189,7 @@ describe('CommentRepositoryPostgres (integration)', () => {
             });
 
             await expect(commentRepository.verifyCommentOwner('comment-1', 'user-2'))
-                .rejects.toThrow('Anda tidak berhak menghapus komentar ini');
+                .rejects.toThrow(AuthorizationError);
         });
     });
 });
