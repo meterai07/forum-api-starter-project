@@ -6,7 +6,7 @@ describe('DeleteCommentUseCase', () => {
             verifyThreadAvailability: jest.fn().mockResolvedValue(),
         };
         const mockCommentRepository = {
-            verifyCommentOwner: jest.fn().mockResolvedValue(),
+            verifyCommentOwner: jest.fn().mockResolvedValue(true),
             deleteCommentById: jest.fn().mockResolvedValue(),
         };
 
@@ -20,9 +20,7 @@ describe('DeleteCommentUseCase', () => {
             commentId: 'comment-001',
         };
 
-        const credentials = {
-            userId: 'user-123',
-        };
+        const credentials = 'user-123';
 
         await useCase.execute(useCasePayload, credentials);
 

@@ -38,6 +38,31 @@ describe('ThreadRepositoryPostgres (integration)', () => {
                 title: 'test thread',
                 owner: 'user-abc',
             });
+
+            const persistedThread = await ThreadsTableTestHelper.findThreadById('thread-123');
+            expect(persistedThread).toHaveLength(1);
+            expect(persistedThread[0]).toEqual({
+                id: 'thread-123',
+                title: 'test thread',
+                body: 'this is a test thread',
+                date: expect.any(String),
+                owner: 'user-abc',
+            });
+        });
+
+        it('should throw InvariantError when insert does not return any rows', async () => {
+            const fakePool = {
+                query: jest.fn().mockResolvedValue({ rows: [] }),
+            };
+            const fakeIdGenerator = () => '123';
+            const repository = new ThreadRepositoryPostgres(fakePool, fakeIdGenerator);
+
+            const newThread = { title: 'judul', body: 'isi' };
+            const owner = 'user-123';
+
+            await expect(repository.addThread(newThread, owner))
+                .rejects
+                .toThrow('Thread gagal ditambahkan');
         });
     });
 
@@ -54,6 +79,16 @@ describe('ThreadRepositoryPostgres (integration)', () => {
                 body: 'body',
                 date: expect.any(String),
                 username: 'user1',
+            });
+
+            const persistedThread = await ThreadsTableTestHelper.findThreadById('thread-1');
+            expect(persistedThread).toHaveLength(1);
+            expect(persistedThread[0]).toEqual({
+                id: 'thread-1',
+                title: 'title',
+                body: 'body',
+                date: expect.any(String),
+                owner: 'user-1',
             });
         });
 

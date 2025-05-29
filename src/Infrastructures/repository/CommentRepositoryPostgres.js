@@ -35,7 +35,7 @@ class CommentRepositoryPostgres extends CommentRepository {
 
         const deleteResult = await this._pool.query(deleteQuery);
         if (!deleteResult.rows.length) {
-            throw new NotFoundError('Comment gagal dihapus. Id tidak ditemukan');
+            throw new NotFoundError('Comment tidak ditemukan');
         }
     }
 

@@ -20,4 +20,14 @@ describe('ThreadRepository', () => {
             .rejects
             .toThrowError('THREAD_REPOSITORY.METHOD_NOT_IMPLEMENTED');
     });
+
+    it('should throw error when invoking verifyThreadAvailability method without implementation', async () => {
+        // Arrange
+        const threadRepository = new ThreadRepository();
+
+        // Action & Assert
+        await expect(threadRepository.verifyThreadAvailability('thread-123'))
+            .rejects
+            .toThrowError('THREAD_REPOSITORY.METHOD_NOT_IMPLEMENTED');
+    });
 });

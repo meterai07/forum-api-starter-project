@@ -124,6 +124,32 @@ describe('ReplyRepositoryPostgres (integration)', () => {
 
             const persistedReply = await RepliesTableTestHelper.findReplyById(result.id);
             expect(persistedReply).toHaveLength(1);
+            expect(persistedReply[0]).toEqual({
+                id: result.id,
+                content: reply.content,
+                date: expect.any(String),
+                comment_id: 'comment-1',
+                owner: 'user-1',
+                is_deleted: false,
+            });
+        });
+
+        it('should throw InvariantError when insert does not return any rows', async () => {
+            const fakePool = {
+                query: jest.fn().mockResolvedValue({ rows: [] }),
+            };
+            const fakeIdGenerator = () => '123';
+            const replyRepository = new ReplyRepositoryPostgres(fakePool, fakeIdGenerator);
+
+            const reply = {
+                content: 'balasan apapun',
+                commentId: 'comment-1',
+            };
+            const owner = 'user-1';
+
+            await expect(replyRepository.addReplyComment(reply, owner))
+                .rejects
+                .toThrow('Balasan gagal ditambahkan');
         });
     });
 

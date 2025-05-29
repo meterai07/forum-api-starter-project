@@ -3,6 +3,8 @@ const CommentRepositoryPostgres = require('../CommentRepositoryPostgres');
 const UsersTableTestHelper = require('../../../../tests/UsersTableTestHelper');
 const ThreadsTableTestHelper = require('../../../../tests/ThreadsTableTestHelper');
 const CommentsTableTestHelper = require('../../../../tests/CommentsTableTestHelper');
+const InvariantError = require('../../../Commons/exceptions/InvariantError');
+const NotFoundError = require('../../../Commons/exceptions/NotFoundError');
 
 describe('CommentRepositoryPostgres (integration)', () => {
     const fakeIdGenerator = () => '123';
@@ -42,9 +44,36 @@ describe('CommentRepositoryPostgres (integration)', () => {
                 content: 'test comment',
                 owner: 'user-abc',
             });
+
+            const persistedComment = await CommentsTableTestHelper.findCommentById('comment-123');
+            expect(persistedComment).toHaveLength(1);
+            expect(persistedComment[0]).toEqual({
+                id: 'comment-123',
+                content: 'test comment',
+                date: expect.any(String),
+                thread_id: 'thread-123',
+                owner: 'user-abc',
+                is_deleted: false,
+            });
         });
 
+        it('should throw InvariantError when insert does not return any rows', async () => {
+            const fakePool = {
+                query: jest.fn().mockResolvedValue({ rows: [] }),
+            };
+            const fakeIdGenerator = () => '123';
+            const commentRepository = new CommentRepositoryPostgres(fakePool, fakeIdGenerator);
 
+            const comment = {
+                content: 'test comment',
+                threadId: 'thread-123',
+            };
+            const owner = 'user-abc';
+
+            await expect(commentRepository.addComment(comment, owner))
+                .rejects
+                .toThrow('Comment gagal ditambahkan');
+        });
     });
 
     describe('getCommentsByThreadId', () => {
@@ -93,6 +122,11 @@ describe('CommentRepositoryPostgres (integration)', () => {
 
             const comment = await CommentsTableTestHelper.findCommentById('comment-1');
             expect(comment[0].is_deleted).toBe(true);
+        });
+
+        it('should throw NotFoundError when comment not found', async () => {
+            await expect(commentRepository.deleteCommentById('non-existent-id'))
+                .rejects.toThrow(NotFoundError);
         });
     });
 
