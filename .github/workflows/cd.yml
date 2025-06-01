@@ -1,0 +1,28 @@
+name: Continuous Deployment
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy to DigitalOcean Droplet
+        run: |
+          ssh -o StrictHostKeyChecking=no root@<YOUR_DROPLET_IP> << 'EOF'
+            cd /root/forum-api
+            git pull origin master
+            npm install
+            npm run migrate
+            pm2 restart forum-api || pm2 start src/app.js --name forum-api
+          EOF
