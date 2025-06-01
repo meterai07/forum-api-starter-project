@@ -25,6 +25,7 @@ class DetailThread {
                 content: comment.is_deleted ? '**komentar telah dihapus**' : comment.content,
                 date: comment.date,
                 username: comment.username,
+                likeCount: comment.likes || 0,
                 replies: commentReplies,
             };
         });
