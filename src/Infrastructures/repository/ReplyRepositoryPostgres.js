@@ -45,14 +45,9 @@ class ReplyRepositoryPostgres extends ReplyRepository {
 
         try {
             const result = await this._pool.query(query);
-            if (!result.rows.length) {
-                throw new InvariantError('Balasan gagal ditambahkan');
-            }
             return result.rows[0];
         } catch (error) {
-            if (error.code === '23503') {
-                throw new InvariantError('Tidak dapat membuat balasan dengan komentar yang tidak valid');
-            }
+            throw new InvariantError('Tidak dapat membuat balasan dengan komentar yang tidak valid');
         }
     }
 

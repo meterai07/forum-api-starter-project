@@ -17,6 +17,7 @@ describe('DetailThread Entity', () => {
                     date: '2021-08-08T08:00:00.000Z',
                     username: 'jane_doe',
                     is_deleted: false,
+                    likes: 5,
                 },
             ],
             replies: [
@@ -45,6 +46,7 @@ describe('DetailThread Entity', () => {
                     content: 'A comment',
                     date: '2021-08-08T08:00:00.000Z',
                     username: 'jane_doe',
+                    likeCount: 5,
                     replies: [
                         {
                             id: 'reply-1',

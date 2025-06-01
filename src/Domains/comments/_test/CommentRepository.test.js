@@ -46,4 +46,37 @@ describe('CommentRepository', () => {
             .rejects
             .toThrowError('COMMENT_REPOSITORY.METHOD_NOT_IMPLEMENTED');
     });
+
+
+    it('should throw error when invoking verifyCommentAvailability method without implementation', async () => {
+        const commentRepository = new CommentRepository();
+
+        await expect(commentRepository.verifyCommentAvailability('thread-123'))
+            .rejects
+            .toThrowError('COMMENT_REPOSITORY.METHOD_NOT_IMPLEMENTED');
+    });
+
+    it('should throw error when invoking checkUserLikeStatus method without implementation', async () => {
+        const commentRepository = new CommentRepository();
+
+        await expect(commentRepository.checkUserLikeStatus('comment-123', 'user-123'))
+            .rejects
+            .toThrowError('COMMENT_REPOSITORY.METHOD_NOT_IMPLEMENTED');
+    });
+
+    it('should throw error when invoking addLikeToComment method without implementation', async () => {
+        const commentRepository = new CommentRepository();
+
+        await expect(commentRepository.addLikeToComment('comment-123', 'user-123'))
+            .rejects
+            .toThrowError('COMMENT_REPOSITORY.METHOD_NOT_IMPLEMENTED');
+    });
+
+    it('should throw error when invoking removeLikeFromComment method without implementation', async () => {
+        const commentRepository = new CommentRepository();
+
+        await expect(commentRepository.removeLikeFromComment('comment-123', 'user-123'))
+            .rejects
+            .toThrowError('COMMENT_REPOSITORY.METHOD_NOT_IMPLEMENTED');
+    });
 });
