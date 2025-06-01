@@ -45,31 +45,7 @@ jobs:
         run: npm install
 
       - name: Run test DB migration
-        run: npm run migrate:test
+        run: npm run migrate:test up
 
       - name: Run passing tests
-        run: npm test
-
-  test-fail:
-    name: Run Failing Test
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Create a failing test
-        run: |
-          mkdir -p __tests__
-          echo "test('failing test', () => { expect(1).toBe(2); });" > __tests__/failing.test.js
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "18"
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Run failing test
-        run: |
-          npm test || echo "Expected failure"
+        run: npm run test
