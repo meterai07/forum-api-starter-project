@@ -31,6 +31,9 @@ jobs:
       PGDATABASE_TEST: forumapi_test
       PGPORT_TEST: 5432
       NODE_ENV: test
+      ACCESS_TOKEN_KEY: IniAdalahAccessTokenKeyYangSangatPanjangDanAman1234567890
+      REFRESH_TOKEN_KEY: IniAdalahRefreshTokenKeyYangSangatPanjangDanAman1234567890
+      ACCCESS_TOKEN_AGE: 3000
 
     steps:
       - name: Checkout repository
