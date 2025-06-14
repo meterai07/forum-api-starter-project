@@ -17,38 +17,29 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Copy files to EC2
-        run: |
-          rsync -avz -e "ssh -o StrictHostKeyChecking=no" . ubuntu@ec2-18-142-57-178.ap-southeast-1.compute.amazonaws.com:/home/ubuntu/forum-api-starter-project/
-
-      - name: Install Node.js, PM2, DB, and Restart App
+      - name: Deploy to EC2
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@ec2-18-142-57-178.ap-southeast-1.compute.amazonaws.com << 'EOF'
             cd /home/ubuntu/forum-api-starter-project
 
-            # Install Node.js
-            curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-            sudo apt-get install -y nodejs
+            # Pull latest code (rsync will overwrite it in next step, but this is optional safety)
+            git reset --hard
+            git clean -fd
 
-            # Install PM2
-            sudo npm install -g pm2
+            exit
+          EOF
 
-            # Install PostgreSQL (if not yet installed)
-            sudo apt-get install -y postgresql postgresql-contrib
+          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" . ubuntu@ec2-18-142-57-178.ap-southeast-1.compute.amazonaws.com:/home/ubuntu/forum-api-starter-project/
 
-            # Start PostgreSQL and create DB
-            sudo systemctl start postgresql
-            sudo -u postgres psql -c "CREATE DATABASE forumapi;" || echo "DB exists"
+          ssh -o StrictHostKeyChecking=no ubuntu@ec2-18-142-57-178.ap-southeast-1.compute.amazonaws.com << 'EOF'
+            cd /home/ubuntu/forum-api-starter-project
 
-            # Export ENV variables
-            export $(grep -v '^#' .env | xargs)
-
-            # Install project dependencies
+            # Install new dependencies if package.json changed
             npm install
 
-            # Run migration
+            # Run DB migrations (optional if already migrated)
             npm run migrate up
 
-            # Start with PM2
+            # Restart using PM2
             pm2 restart app || pm2 start src/app.js --name app
           EOF
