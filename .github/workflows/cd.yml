@@ -19,7 +19,7 @@ jobs:
 
       - name: Deploy to EC2
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@ec2-18-142-57-178.ap-southeast-1.compute.amazonaws.com << 'EOF'
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
             cd /home/ubuntu/forum-api-starter-project
 
             git reset --hard
@@ -28,9 +28,9 @@ jobs:
             exit
           EOF
 
-          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" . ubuntu@ec2-13-229-205-175.ap-southeast-1.compute.amazonaws.com:/home/ubuntu/forum-api-starter-project/
+          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" . ubuntu@${{ secrets.EC2_HOST }}:/home/ubuntu/forum-api-starter-project/
 
-          ssh -o StrictHostKeyChecking=no ubuntu@ec2-13-229-205-175.ap-southeast-1.compute.amazonaws.com << 'EOF'
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
             cd /home/ubuntu/forum-api-starter-project
 
             npm install
