@@ -21,22 +21,34 @@ jobs:
         run: |
           rsync -avz -e "ssh -o StrictHostKeyChecking=no" . ubuntu@ec2-18-142-57-178.ap-southeast-1.compute.amazonaws.com:/home/ubuntu/forum-api-starter-project/
 
-      - name: Install Node.js, PM2, and Restart App
+      - name: Install Node.js, PM2, DB, and Restart App
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@ec2-18-142-57-178.ap-southeast-1.compute.amazonaws.com << 'EOF'
-            # Navigate to app directory
             cd /home/ubuntu/forum-api-starter-project
 
-            # Install Node.js (LTS version 18)
+            # Install Node.js
             curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
             sudo apt-get install -y nodejs
 
-            # Install PM2 globally
+            # Install PM2
             sudo npm install -g pm2
+
+            # Install PostgreSQL (if not yet installed)
+            sudo apt-get install -y postgresql postgresql-contrib
+
+            # Start PostgreSQL and create DB
+            sudo systemctl start postgresql
+            sudo -u postgres psql -c "CREATE DATABASE forumapi;" || echo "DB exists"
+
+            # Export ENV variables
+            export $(grep -v '^#' .env | xargs)
 
             # Install project dependencies
             npm install
 
-            # Restart or start the app with PM2
+            # Run migration
+            npm run migrate
+
+            # Start with PM2
             pm2 restart app || pm2 start src/app.js --name app
           EOF
