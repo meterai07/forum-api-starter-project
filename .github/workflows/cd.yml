@@ -17,12 +17,14 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Deploy to DigitalOcean Droplet
+      - name: Copy files to EC2
         run: |
-          ssh -o StrictHostKeyChecking=no root@<YOUR_DROPLET_IP> << 'EOF'
-            cd /root/forum-api
-            git pull origin master
+          rsync -avz -e "ssh -o StrictHostKeyChecking=no" . ubuntu@ec2-18-142-57-178.ap-southeast-1.compute.amazonaws.com:/home/ubuntu/forum-api-starter-project/
+
+      - name: Install Dependencies & Restart App
+        run: |
+          ssh ubuntu@ec2-18-142-57-178.ap-southeast-1.compute.amazonaws.com << 'EOF'
+            cd /home/ubuntu/forum-api-starter-project
             npm install
-            npm run migrate
-            pm2 restart forum-api || pm2 start src/app.js --name forum-api
+            pm2 restart app || pm2 start src/app.js --name app
           EOF
