@@ -47,7 +47,7 @@ jobs:
             npm install
 
             # Run migration
-            npm run migrate
+            npm run migrate up
 
             # Start with PM2
             pm2 restart app || pm2 start src/app.js --name app
