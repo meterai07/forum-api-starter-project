@@ -21,10 +21,22 @@ jobs:
         run: |
           rsync -avz -e "ssh -o StrictHostKeyChecking=no" . ubuntu@ec2-18-142-57-178.ap-southeast-1.compute.amazonaws.com:/home/ubuntu/forum-api-starter-project/
 
-      - name: Install Dependencies & Restart App
+      - name: Install Node.js, PM2, and Restart App
         run: |
-          ssh ubuntu@ec2-18-142-57-178.ap-southeast-1.compute.amazonaws.com << 'EOF'
+          ssh -o StrictHostKeyChecking=no ubuntu@ec2-18-142-57-178.ap-southeast-1.compute.amazonaws.com << 'EOF'
+            # Navigate to app directory
             cd /home/ubuntu/forum-api-starter-project
+
+            # Install Node.js (LTS version 18)
+            curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+            sudo apt-get install -y nodejs
+
+            # Install PM2 globally
+            sudo npm install -g pm2
+
+            # Install project dependencies
             npm install
+
+            # Restart or start the app with PM2
             pm2 restart app || pm2 start src/app.js --name app
           EOF
