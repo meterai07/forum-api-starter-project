@@ -21,21 +21,20 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
             cd /home/ubuntu/forum-api-starter-project
-
             git reset --hard
             git clean -fd
-
             exit
           EOF
 
           rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" . ubuntu@${{ secrets.EC2_HOST }}:/home/ubuntu/forum-api-starter-project/
 
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << EOF
+            echo "${{ secrets.ENV_CONTENT }}" > /home/ubuntu/forum-api-starter-project/.env
+          EOF
+
           ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
             cd /home/ubuntu/forum-api-starter-project
-
             npm install
-
             npm run migrate up
-
             pm2 restart app || pm2 start src/app.js --name app
           EOF
