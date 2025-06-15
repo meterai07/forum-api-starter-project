@@ -98,6 +98,7 @@ describe('CommentRepositoryPostgres (integration)', () => {
                         username: 'user1',
                         is_deleted: false,
                         likes: 0,
+                        date: expect.any(String),
                     }),
                 ])
             );

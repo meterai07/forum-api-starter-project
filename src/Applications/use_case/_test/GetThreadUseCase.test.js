@@ -19,6 +19,7 @@ describe('GetThreadUseCase', () => {
                 username: 'userB',
                 is_deleted: false,
                 thread_id: 'thread-123',
+                likes: 0,
             },
         ];
 
@@ -48,6 +49,7 @@ describe('GetThreadUseCase', () => {
                     date: '2021-01-01',
                     username: 'userB',
                     is_deleted: false,
+                    likes: 0,
                 },
             ],
             replies: [
